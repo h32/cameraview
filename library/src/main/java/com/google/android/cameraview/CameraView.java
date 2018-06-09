@@ -400,6 +400,18 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public float getZoom() {
+        return mImpl.getZoom();
+    }
+
+    public void setZoom(float zoom) {
+        mImpl.setZoom(zoom);
+    }
+
+    public float getMaxZoom() {
+        return mImpl.getMaxZoom();
+    }
+
     /**
      * Take a picture. The result will be returned to
      * {@link Callback#onPictureTaken(CameraView, byte[])}.
