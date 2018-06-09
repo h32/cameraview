@@ -18,6 +18,7 @@ package com.google.android.cameraview;
 
 import android.view.View;
 
+import java.util.List;
 import java.util.Set;
 
 abstract class CameraViewImpl {
@@ -47,6 +48,12 @@ abstract class CameraViewImpl {
     abstract void setFacing(int facing);
 
     abstract int getFacing();
+
+    abstract void setZoom(float zoom);
+
+    abstract float getZoom();
+
+    abstract float getMaxZoom();
 
     abstract Set<AspectRatio> getSupportedAspectRatios();
 

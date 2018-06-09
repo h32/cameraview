@@ -19,6 +19,7 @@ package com.google.android.cameraview;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -35,7 +36,9 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -197,7 +200,9 @@ class Camera2 extends CameraViewImpl {
 
     private int mDisplayOrientation;
 
-    Camera2(Callback callback, PreviewImpl preview, Context context) {
+    private float mZoom = 1.f;
+
+	Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         mPreview.setCallback(new PreviewImpl.Callback() {
@@ -257,7 +262,60 @@ class Camera2 extends CameraViewImpl {
         return mFacing;
     }
 
-    @Override
+	@Override
+	void setZoom(float zoom) {
+		if (mZoom == zoom) {
+			return;
+		}
+
+		float saved = mZoom;
+		mZoom = zoom;
+		if (mCameraCharacteristics != null) {
+			if (updateZoom()) {
+				try {
+					mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
+							mCaptureCallback, null);
+				} catch (CameraAccessException e) {
+					mZoom = saved; // Revert
+				}
+			}
+		}
+	}
+
+	private boolean updateZoom() {
+		Float maxZoom = mCameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+		if (maxZoom == null) return false;
+
+		Rect m = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+		if (m == null) return false;
+
+		if (mZoom < 1.f) mZoom = 1.f;
+		if (mZoom > maxZoom) mZoom = maxZoom;
+		if (mPreviewRequestBuilder == null) return false;
+		if (mCaptureSession == null) return false;
+
+		int cropW = (m.width() - (int)((float)m.width() / mZoom)) / 2;
+		int cropH = (m.height() - (int)((float)m.height() / mZoom)) / 2;
+
+		Rect zoomRect = new Rect(cropW, cropH, m.width() - cropW, m.height() - cropH);
+		mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+
+		return true;
+	}
+
+	@Override
+	float getZoom() {
+		return mZoom;
+	}
+
+	@Override
+	float getMaxZoom() {
+		Float maxZoom = mCameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+		if (maxZoom == null) return 1.f;
+		return maxZoom;
+	}
+
+	@Override
     Set<AspectRatio> getSupportedAspectRatios() {
         return mPreviewSizes.ratios();
     }
